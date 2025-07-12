@@ -15,7 +15,11 @@
 	CompanyName       = 'Playscale'
 
 	# Functions to export
-	FunctionsToExport = @('Invoke-Clean', 'Get-ProjectRoot')
+	FunctionsToExport = @(
+		'Invoke-Clean', 
+		'Get-ProjectRoot',
+		'Invoke-EditorBuild'
+	)
 
 	# PowerShell version requirement
 	PowerShellVersion = '7.0'
