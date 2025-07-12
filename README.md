@@ -1,6 +1,6 @@
 # Unreal Build Scripts
 
-Build and test scripts suitable for game and plugin development that also run tests and generate coverage reports.
+Build and test scripts suitable for game and plugin development that also generate coverage reports.
 
 This is a collection of scripts I find myself re-using on projects. I have tried to make them project-agnostic so they can simply be used as a submodule in either a top-level game project, or as a plugin in `<Project>/Plugins`.
 
