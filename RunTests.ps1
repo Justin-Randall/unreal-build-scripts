@@ -31,7 +31,7 @@
 
 param (
 	[Parameter(Mandatory = $false)]
-	[string]$UnrealEngineDir = $env:UE_PATH,
+	[string]$UnrealEngineDir,
 
 	[Parameter(Mandatory = $false)]
 	[string]$AdditionalArgs = "",
@@ -68,38 +68,7 @@ if (-not $TestPrefix) {
 	}
 }
 
-# fall back to UE_PATH environment variable if not provided
-if ( -not $UnrealEngineDir ) {
-	if ( $env:UE_PATH ) {
-		$UnrealEngineDir = $env:UE_PATH
-	}
-	else {
-		Throw "You must either pass -UnrealEngineDir or set the UE_PATH environment variable."
-	}
-}
-
-if (-not $ProjectPath) {
-	# Define the directory to search
-	$SearchDirectory = Join-Path $PSScriptRoot '..\..'
-
-	# Search for .uproject files in the directory
-	$UProjectFiles = Get-ChildItem -Path $SearchDirectory -Filter '*.uproject' -File -Recurse
-
-	if ($UProjectFiles.Count -eq 1) {
-		# Only one .uproject file found
-		$ProjectPath = $UProjectFiles[0].FullName
-	}
-	elseif ($UProjectFiles.Count -gt 1) {
-		# Multiple .uproject files found, select the first one or handle as needed
-		Write-Warning "Multiple .uproject files found. Using the first one."
-		$ProjectPath = $UProjectFiles[0].FullName
-	}
-	else {
-		# No .uproject files found
-		Write-Error "No .uproject files found in the directory '$SearchDirectory'. Please specify the -ProjectPath parameter."
-		exit 1
-	}
-}
+$UnrealEngineDir = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir
 
 Write-Host "[info] Starting Unreal Automation Tests"
 Write-Host ""
