@@ -26,7 +26,7 @@ param(
 		Select-Object -First 1).BaseName
 )
 
-Import-Module (Join-Path $PSScriptRoot 'BuildHelpers.psd1') -Force
+. (Join-Path $PSScriptRoot 'CommonBuildHelpers.ps1')
 
 # -------------------------------------------------------------------
 # Discover project root and name
