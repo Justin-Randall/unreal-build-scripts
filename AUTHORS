@@ -1,0 +1,19 @@
+# This file lists the official authors of the unreal-build-scripts project.
+# For copyright and licensing details, please see the LICENSE file.
+#
+# Lines starting with a '#' are comments and should be ignored by parsers.
+#
+# Format for each entry:
+# Each author has their own entry. The first line is the author's full name.
+# Each subsequent line for that author must be indented and contain a
+# single contact, such as an email address or a website URL.
+#
+#   Full Name
+#     <email1@example.com>
+#     <https://github.com/username>
+#
+
+Justin Randall
+  <justin@playscale.io>
+  <exabytecoder@gmail.com>
+  https://github.com/Justin-Randall
