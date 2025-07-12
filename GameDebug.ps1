@@ -9,17 +9,8 @@
 #>
 
 param(
-	[string]$UnrealEngineDir
+    [string]$UnrealEngineDir
 )
-
-if ( -not $UnrealEngineDir ) {
-	if ( $env:UE_PATH ) {
-		$UnrealEngineDir = $env:UE_PATH
-	}
-	else {
-		Throw "You must either pass -UnrealEngineDir or set the UE_PATH environment variable."
-	}
-}
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 & "$scriptDir\Game.ps1" -Configuration DebugGame -UnrealEngineDir $UnrealEngineDir

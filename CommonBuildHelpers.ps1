@@ -3,14 +3,13 @@
 # MIT-Derived License with Attribution, see LICENSE file for full details.
 # -------------------------------------------------------------------
 
-# File: Scripts/Build/BuildHelpers.psm1
+# File: Scripts/Build/CommonBuildHelpers.ps1
 <#
 .SYNOPSIS
   Shared build helper functions for Unreal projects.
 
 .DESCRIPTION
-  This module exports common functions used by Editor.ps1, Game.ps1, PackageGame.ps1, etc.
-  - Invoke-Clean: runs Clean.ps1 to wipe build artifacts.
+  This script contains common functions used by Editor.ps1, Game.ps1, etc.
 #>
 
 function Invoke-Clean {
@@ -178,4 +177,124 @@ function Invoke-EditorBuild {
     Write-Host "Build succeeded: $EditorTarget ($Configuration) with no warnings or errors."
 }
 
-Export-ModuleMember -Function Invoke-Clean, Get-ProjectRoot, Invoke-EditorBuild
+<#
+.SYNOPSIS
+  Builds the Unreal Game client for the specified configuration and platform.
+
+.PARAMETER Configuration
+  The build configuration (e.g., "DebugGame", "Development", "Shipping").
+
+.PARAMETER Platform
+  The target platform (e.g., "Win64").
+
+.PARAMETER UnrealEngineDir
+  The absolute path to the Unreal Engine installation directory.
+
+.PARAMETER ProjectDir
+  The absolute path to the project's root directory.
+
+.PARAMETER ProjectName
+  The name of the Unreal Engine project.
+
+.PARAMETER ProjectPath
+  The absolute path to the .uproject file.
+#>
+function Invoke-GameBuild {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("DebugGame", "Development", "Shipping")]
+        [string]$Configuration,
+        [string]$Platform = "Win64",
+        [string]$UnrealEngineDir,
+        [string]$ProjectDir,
+        [string]$ProjectName,
+        [string]$ProjectPath
+    )
+
+    # Fallback to UE_PATH environment variable if not provided
+    if (-not $UnrealEngineDir) {
+        if ($env:UE_PATH) {
+            $UnrealEngineDir = $env:UE_PATH
+        }
+        else {
+            Throw "You must either pass -UnrealEngineDir or set the UE_PATH environment variable."
+        }
+    }
+
+    # Resolve & validate paths
+    if (-not (Test-Path $UnrealEngineDir)) {
+        Write-Error "UE_PATH invalid: '$UnrealEngineDir'"
+        exit 1
+    }
+    if (-not (Test-Path $ProjectPath)) {
+        Write-Error "Project file not found at '$ProjectPath'"
+        exit 1
+    }
+
+    # Locate UnrealBuildTool.dll
+    $ubtDll = Join-Path $UnrealEngineDir "Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll"
+    if (-not (Test-Path $ubtDll)) {
+        Write-Error "Cannot find UnrealBuildTool.dll at '$ubtDll'"
+        Invoke-Clean
+        exit 1
+    }
+
+    # Prepare log directory & file
+    $logDir = Join-Path $ProjectDir "Intermediate\BuildLogs\Game"
+    if (-not (Test-Path $logDir)) {
+        New-Item -ItemType Directory -Path $logDir | Out-Null
+    }
+    $logFile = Join-Path $logDir "$ProjectName-$Configuration-$Platform.log"
+    if (Test-Path $logFile) {
+        Remove-Item $logFile
+    }
+
+    # Build arguments
+    $ubtArgs = @(
+        $ProjectName,
+        $Platform,
+        $Configuration,
+        "-Project=$ProjectPath",
+        "-WaitMutex",
+        "-FromMsBuild"
+    )
+
+    Write-Host "→ Building game '$ProjectName' ($Platform / $Configuration) via dotnet UBT..."
+    Write-Host "  Logging output to: $logFile`n"
+
+    & dotnet "$ubtDll" $ubtArgs 2>&1 | Tee-Object -FilePath $logFile
+
+    $exitCode = $LASTEXITCODE
+
+    # Fail fast on non-zero exit
+    if ($exitCode -ne 0) {
+        Write-Error "✘ Game build failed (exit code $exitCode)"
+        Invoke-Clean
+        exit 1
+    }
+
+    # Scan log for real warnings/errors
+    Write-Host "`n→ Scanning build log for warnings/errors…`n"
+    $logLines = Get-Content $logFile
+
+    $issues = $logLines | Where-Object {
+        # Any ERROR:
+        ($_ -match '^\s*ERROR:') -or
+        # WARNING except Unreal’s “Success - 0 error(s), 0 warning(s)”
+        (
+            $_ -match '^\s*WARNING:' -and
+            $_ -notmatch 'Success\s*-\s*\d+\s*error\(s\),\s*\d+\s*warning\(s\)' -and
+            $_ -notmatch 'Visual Studio.*not a preferred version'
+        )
+    }
+
+    if ($issues.Count -gt 0) {
+        Write-Error "✘ Detected $($issues.Count) warning(s)/error(s) in game build log. Failing."
+        $issues | ForEach-Object { Write-Warning $_ }
+        Invoke-Clean
+        exit 1
+    }
+
+    Write-Host "`n✔ Successfully built game '$ProjectName' ($Platform / $Configuration) with no warnings or errors."
+}

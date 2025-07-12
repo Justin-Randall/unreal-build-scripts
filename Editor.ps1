@@ -16,7 +16,7 @@ param(
     [string]$UnrealEngineDir
 )
 
-Import-Module (Join-Path $PSScriptRoot 'BuildHelpers.psd1') -Force
+. (Join-Path $PSScriptRoot 'CommonBuildHelpers.ps1')
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $proj = Get-ProjectRoot -StartDir $scriptDir
