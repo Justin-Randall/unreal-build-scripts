@@ -40,7 +40,7 @@ param (
 	[double]$Threshold = 100  # Default threshold to 80%
 )
 
-Import-Module (Join-Path $PSScriptRoot 'BuildHelpers.psd1') -Force
+. (Join-Path $PSScriptRoot 'CommonBuildHelpers.ps1')
 
 # -------------------------------------------------------------------
 # Discover project root and name
