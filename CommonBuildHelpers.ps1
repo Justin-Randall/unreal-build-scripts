@@ -73,6 +73,91 @@ function Get-ProjectRoot {
   }
 }
 
+function Import-CascadingDotEnv {
+  <#
+    .SYNOPSIS
+      Loads .env files from StartDir up to filesystem root.
+
+    .DESCRIPTION
+      Loads every .env found while traversing parent directories. Values from
+      higher-level directories override lower-level directories. Existing
+      process environment variables can be preserved.
+
+    .PARAMETER StartDir
+      Directory to begin the search from.
+
+    .PARAMETER PreserveExistingEnvironment
+      If true, pre-existing process environment variables are not overwritten.
+
+    .OUTPUTS
+      PSCustomObject with keys, applied values, and value source paths.
+  #>
+  [CmdletBinding()]
+  param(
+    [string]$StartDir = (Split-Path -Parent $MyInvocation.MyCommand.Definition),
+    [bool]$PreserveExistingEnvironment = $true
+  )
+
+  $current = (Resolve-Path $StartDir).ProviderPath
+  $dirs = @()
+  while ($true) {
+    $dirs += $current
+    $parent = Split-Path -Path $current -Parent
+    if (-not $parent -or $parent -eq $current) {
+      break
+    }
+    $current = $parent
+  }
+
+  $loaded = [ordered]@{}
+  $sourceByKey = [ordered]@{}
+  foreach ($dir in $dirs) {
+    $envFile = Join-Path $dir '.env'
+    if (-not (Test-Path -LiteralPath $envFile)) {
+      continue
+    }
+
+    foreach ($rawLine in Get-Content -LiteralPath $envFile) {
+      $line = $rawLine.Trim()
+      if (-not $line -or $line.StartsWith('#')) {
+        continue
+      }
+
+      $eq = $line.IndexOf('=')
+      if ($eq -le 0) {
+        Write-Warning "Skipping malformed .env line in '$envFile': $rawLine"
+        continue
+      }
+
+      $key = $line.Substring(0, $eq).Trim()
+      $value = $line.Substring($eq + 1).Trim()
+      if ($value.Length -ge 2) {
+        $startsWithSingle = $value.StartsWith("'") -and $value.EndsWith("'")
+        $startsWithDouble = $value.StartsWith('"') -and $value.EndsWith('"')
+        if ($startsWithSingle -or $startsWithDouble) {
+          $value = $value.Substring(1, $value.Length - 2)
+        }
+      }
+
+      $loaded[$key] = $value
+      $sourceByKey[$key] = $envFile
+    }
+  }
+
+  foreach ($entry in $loaded.GetEnumerator()) {
+    $existing = [Environment]::GetEnvironmentVariable($entry.Key, 'Process')
+    if ($PreserveExistingEnvironment -and -not [string]::IsNullOrEmpty($existing)) {
+      continue
+    }
+    [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value, 'Process')
+  }
+
+  return [PSCustomObject]@{
+    LoadedValues = $loaded
+    SourceByKey  = $sourceByKey
+  }
+}
+
 <#
 .SYNOPSIS
   Builds the Unreal Editor for the specified configuration.
@@ -105,15 +190,28 @@ function Get-ProjectRoot {
 function Resolve-UnrealEngineDir {
   [CmdletBinding()]
   param(
-    [string]$UnrealEngineDir
+    [string]$UnrealEngineDir,
+    [string]$StartDir = (Split-Path -Parent $MyInvocation.MyCommand.Definition)
   )
 
-  if (-not $UnrealEngineDir) {
-    if ($env:UE_PATH) {
+  if ($UnrealEngineDir) {
+    Write-Host "[info] UE path source: -UnrealEngineDir argument"
+  }
+  else {
+    $hadProcessEnv = -not [string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable('UE_PATH', 'Process'))
+    $dotEnvResult = Import-CascadingDotEnv -StartDir $StartDir -PreserveExistingEnvironment $true
+
+    if (-not [string]::IsNullOrEmpty($env:UE_PATH)) {
       $UnrealEngineDir = $env:UE_PATH
+      if ($hadProcessEnv) {
+        Write-Host "[info] UE path source: pre-existing process environment variable UE_PATH"
+      }
+      elseif ($dotEnvResult.SourceByKey.Contains('UE_PATH')) {
+        Write-Host "[info] UE path source: $($dotEnvResult.SourceByKey['UE_PATH'])"
+      }
     }
     else {
-      Throw "You must either pass -UnrealEngineDir or set the UE_PATH environment variable."
+      Throw "You must either pass -UnrealEngineDir, set UE_PATH, or define UE_PATH in a .env file in this or a parent directory."
     }
   }
 
@@ -258,10 +356,15 @@ function Invoke-EditorBuild {
     [string]$UnrealEngineDir,
     [string]$ProjectDir,
     [string]$ProjectName,
-    [string]$ProjectPath
+    [string]$ProjectPath,
+    [string]$StartDir
   )
 
-  $ResolvedUnrealEngineDir = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir
+  if (-not $StartDir) {
+    $StartDir = $ProjectDir
+  }
+
+  $ResolvedUnrealEngineDir = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir -StartDir $StartDir
   $EditorTarget = "${ProjectName}Editor"
 
   Invoke-UnrealBuildTool `
@@ -306,10 +409,15 @@ function Invoke-GameBuild {
     [string]$UnrealEngineDir,
     [string]$ProjectDir,
     [string]$ProjectName,
-    [string]$ProjectPath
+    [string]$ProjectPath,
+    [string]$StartDir
   )
 
-  $ResolvedUnrealEngineDir = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir
+  if (-not $StartDir) {
+    $StartDir = $ProjectDir
+  }
+
+  $ResolvedUnrealEngineDir = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir -StartDir $StartDir
 
   Invoke-UnrealBuildTool `
     -TargetName $ProjectName `

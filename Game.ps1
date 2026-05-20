@@ -23,4 +23,4 @@ param(
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $proj = Get-ProjectRoot -StartDir $scriptDir
 
-Invoke-GameBuild -Configuration $Configuration -Platform $Platform -UnrealEngineDir $UnrealEngineDir -ProjectDir $proj.ProjectDir -ProjectName $proj.ProjectName -ProjectPath $proj.ProjectPath
+Invoke-GameBuild -Configuration $Configuration -Platform $Platform -UnrealEngineDir $UnrealEngineDir -ProjectDir $proj.ProjectDir -ProjectName $proj.ProjectName -ProjectPath $proj.ProjectPath -StartDir $scriptDir

@@ -20,24 +20,13 @@ param(
 	[string]$UnrealEngineDir
 )
 
+. (Join-Path $PSScriptRoot 'CommonBuildHelpers.ps1')
+
 # -------------------------------------------------------------------
 # Resolve and validate Unreal Engine directory
 # -------------------------------------------------------------------
-if ($UnrealEngineDir) {
-	$enginePath = $UnrealEngineDir
-}
-elseif ($env:UE_PATH) {
-	$enginePath = $env:UE_PATH
-}
-else {
-	Write-Error "Missing UnrealEngineDir: pass -UnrealEngineDir or set UE_PATH."
-	exit 1
-}
-
-if (-not (Test-Path $enginePath)) {
-	Write-Error "Engine directory not found: '$enginePath'"
-	exit 1
-}
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$enginePath = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir -StartDir $scriptDir
 
 # -------------------------------------------------------------------
 # Export for downstream scripts
@@ -48,7 +37,6 @@ Write-Host "Using Unreal Engine at: $enginePath`n"
 # -------------------------------------------------------------------
 # Build the Development Editor (catching warnings/errors)
 # -------------------------------------------------------------------
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $buildScript = Join-Path $scriptDir 'EditorDevelopment.ps1'
 
 Write-Host "=== Building Development Editor ==="

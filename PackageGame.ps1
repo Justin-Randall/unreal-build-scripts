@@ -20,7 +20,7 @@ param(
 	[string]$Platform = "Win64",
 	[string]$OutSubfolder = "Packaged",
 	[switch]$SkipBuild, # If set, adds -NoBuild to UAT
-	[string]$UnrealEngineDir = (Get-Item Env:UE_PATH).Value,
+	[string]$UnrealEngineDir,
 	[string]$ProjectDir = (Resolve-Path "$PSScriptRoot\..\.."),
 	[string]$ProjectName = (Get-ChildItem $ProjectDir -Filter '*.uproject' |
 		Select-Object -First 1).BaseName
@@ -38,6 +38,7 @@ $proj = Get-ProjectRoot -StartDir $scriptDir
 $ProjectDir = $proj.ProjectDir
 $ProjectName = $proj.ProjectName
 $ProjectPath = $proj.ProjectPath
+$UnrealEngineDir = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir -StartDir $scriptDir
 
 # -------------------------------------------------------------------
 # Sanity-check paths

@@ -68,7 +68,7 @@ if (-not $TestPrefix) {
 	}
 }
 
-$UnrealEngineDir = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir
+$UnrealEngineDir = Resolve-UnrealEngineDir -UnrealEngineDir $UnrealEngineDir -StartDir $scriptDir
 
 Write-Host "[info] Starting Unreal Automation Tests"
 Write-Host ""
