@@ -29,9 +29,25 @@ function Show-TestLogSummary {
   $automatedTestsLogPath = Join-Path $env:PROJECT_DIR 'Saved\Logs\AutomatedTests.log'
   if (-not (Test-Path -LiteralPath $automatedTestsLogPath)) { return }
   ""
-  "=== Errors, Warnings and LogAutomation Output from $automatedTestsLogPath ==="
+  "=== Log summary from $automatedTestsLogPath ==="
   Get-Content -LiteralPath $automatedTestsLogPath | Select-String -Pattern 'Warning|Error|LogAutomationC' | ForEach-Object { $_.Line }
-  "=== End of Errors, Warnings and LogAutomation Output ==="
+  "=== End log summary ==="
+  ""
+}
+
+function Show-RelevantLogs {
+  $logDir = Join-Path $env:PROJECT_DIR 'Saved\Logs'
+  if (-not (Test-Path -LiteralPath $logDir)) {
+    "[info] Log directory not found: $logDir"
+    return
+  }
+
+  ""
+  "=== Available logs in $logDir ==="
+  Get-ChildItem -LiteralPath $logDir -File | Sort-Object LastWriteTime -Descending | Select-Object -First 10 | ForEach-Object {
+    "{0} ({1} bytes, {2})" -f $_.Name, $_.Length, $_.LastWriteTime
+  }
+  "=== End available logs ==="
   ""
 }
 
@@ -57,12 +73,14 @@ switch ($Action) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   }
   'test' {
-    $execCmd = "Automation RunTests FTest_+$($env:TEST_PREFIX); Quit"
-    $args = @($env:PROJECT_PATH, "/$($env:TEST_MAP_ROOT)/Maps/TestMap", '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
+    $execCmd = "Automation RunTests $($env:TEST_PREFIX); Quit"
+    $args = @($env:PROJECT_PATH, "/Game/$($env:TEST_MAP_ROOT)/Maps/TestMap", '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
     "[info] Running tests without coverage"
     "[debug] $($env:EDITOR_CMD) $args"
     $exitCode = Invoke-Process -FilePath $env:EDITOR_CMD -Arguments $args
     "[info] Unreal Automation Tests finished with exit code: $exitCode"
+    Show-RelevantLogs
+    Show-TestLogSummary
     if ($exitCode -ne 0) { exit $exitCode }
   }
   'coverage' {
@@ -72,8 +90,8 @@ switch ($Action) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     Remove-Item -LiteralPath (Join-Path $outDir '*') -Recurse -Force -ErrorAction SilentlyContinue
     $cobertura = Join-Path $outDir 'coverage.xml'
-    $execCmd = "Automation RunTests FTest_+$($env:TEST_PREFIX); Quit"
-    $testArgs = @($env:PROJECT_PATH, "/$($env:TEST_MAP_ROOT)/Maps/TestMap", '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
+    $execCmd = "Automation RunTests $($env:TEST_PREFIX); Quit"
+    $testArgs = @($env:PROJECT_PATH, "/Game/$($env:TEST_MAP_ROOT)/Maps/TestMap", '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
     $occArgs = @(
       "--export_type=cobertura:$cobertura",
       "--export_type=html:$outDir",
@@ -93,8 +111,9 @@ switch ($Action) {
       $exitCode = Invoke-Process -FilePath $coverageCmd.Path -Arguments $occArgs
     }
     "[info] OpenCppCoverage finished with exit code: $exitCode"
+    Show-RelevantLogs
+    Show-TestLogSummary
     if ($exitCode -ne 0) {
-      Show-TestLogSummary
       exit $exitCode
     }
 
@@ -114,7 +133,6 @@ switch ($Action) {
     $threshold = [double]$CoverageThreshold
 
     if ($coverage -lt $threshold) {
-      Show-TestLogSummary
       "[error] Coverage ($coverage%) is below the threshold ($threshold%)."
 
       $uncoveredByFile = @{}
@@ -148,6 +166,11 @@ switch ($Action) {
             $attempt = Join-Path $env:PROJECT_DIR $file
             if (Test-Path -LiteralPath $attempt) { $resolvedFile = (Resolve-Path -LiteralPath $attempt).Path }
           }
+          if (-not $resolvedFile -and $file -match 'Source[\\/].*') {
+            $suffix = $Matches[0] -replace '/', '\\'
+            $attempt = Join-Path $env:PROJECT_DIR $suffix
+            if (Test-Path -LiteralPath $attempt) { $resolvedFile = (Resolve-Path -LiteralPath $attempt).Path }
+          }
 
           $fileContent = @()
           if ($resolvedFile) { $fileContent = Get-Content -LiteralPath $resolvedFile }
@@ -155,7 +178,8 @@ switch ($Action) {
           foreach ($lineNumber in ($uncoveredByFile[$file] | Sort-Object -Unique)) {
             $lineText = '(source code not available)'
             if ($fileContent.Count -ge $lineNumber) { $lineText = $fileContent[$lineNumber - 1].TrimEnd() }
-            "File: $file : Line $lineNumber"
+            $clickableFile = if ($resolvedFile) { $resolvedFile } else { $file }
+            "File: ${clickableFile}:$lineNumber"
             "    `"$lineText`""
           }
         }
