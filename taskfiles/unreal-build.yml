@@ -1,0 +1,40 @@
+version: '3'
+
+tasks:
+  clean:
+    desc: Clean all Unreal build and generated outputs
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action clean
+
+  build:editor:
+    desc: Build editor target (CONFIG=Development|DebugGame)
+    vars:
+      CONFIG: '{{default "Development" .CONFIG}}'
+      PLATFORM: '{{default "Win64" .PLATFORM}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action build-editor -Config {{.CONFIG}} -Platform {{.PLATFORM}}
+
+  build:game:
+    desc: Build game target (CONFIG=DebugGame|Development|Shipping)
+    vars:
+      CONFIG: '{{default "Development" .CONFIG}}'
+      PLATFORM: '{{default "Win64" .PLATFORM}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action build-game -Config {{.CONFIG}} -Platform {{.PLATFORM}}
+
+  build:all:
+    desc: Build all editor and game targets
+    cmds:
+      - task: build:editor
+        vars: { CONFIG: Development }
+      - task: build:editor
+        vars: { CONFIG: DebugGame }
+      - task: build:game
+        vars: { CONFIG: DebugGame }
+      - task: build:game
+        vars: { CONFIG: Development }
+      - task: build:game
+        vars: { CONFIG: Shipping }

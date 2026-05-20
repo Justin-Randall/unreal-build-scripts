@@ -1,0 +1,28 @@
+version: '3'
+
+tasks:
+  test:
+    desc: Run Unreal automation tests
+    vars:
+      ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action test -AdditionalArgs "{{.ADDITIONAL_ARGS}}"
+
+  coverage:
+    desc: Run tests with OpenCppCoverage and generate Cobertura report
+    vars:
+      ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage -AdditionalArgs "{{.ADDITIONAL_ARGS}}"
+
+  coverage:gate:
+    desc: Enforce coverage threshold (COVERAGE_THRESHOLD=100)
+    vars:
+      COVERAGE_THRESHOLD: '{{default "100" .COVERAGE_THRESHOLD}}'
+    deps:
+      - task: coverage
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage-gate -CoverageThreshold {{.COVERAGE_THRESHOLD}}

@@ -1,0 +1,24 @@
+version: '3'
+
+includes:
+  common:
+    taskfile: ./_common.yml
+    flatten: true
+  build:
+    taskfile: ./unreal-build.yml
+    flatten: true
+  test:
+    taskfile: ./unreal-test.yml
+    flatten: true
+  package:
+    taskfile: ./unreal-package.yml
+    flatten: true
+  ci:
+    taskfile: ./ci.yml
+    flatten: true
+
+tasks:
+  default:
+    desc: List available tasks
+    cmds:
+      - task --list

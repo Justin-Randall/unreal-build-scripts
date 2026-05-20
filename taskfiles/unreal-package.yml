@@ -1,0 +1,22 @@
+version: '3'
+
+tasks:
+  package:game:
+    desc: Package game build (CONFIG=DebugGame|Development|Shipping)
+    vars:
+      CONFIG: '{{default "Shipping" .CONFIG}}'
+      PLATFORM: '{{default "Win64" .PLATFORM}}'
+      OUT_SUBFOLDER: '{{default "Packaged" .OUT_SUBFOLDER}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action package -Config {{.CONFIG}} -Platform {{.PLATFORM}} -OutSubfolder {{.OUT_SUBFOLDER}}
+
+  package:all:
+    desc: Package all game configurations
+    cmds:
+      - task: package:game
+        vars: { CONFIG: DebugGame }
+      - task: package:game
+        vars: { CONFIG: Development }
+      - task: package:game
+        vars: { CONFIG: Shipping }

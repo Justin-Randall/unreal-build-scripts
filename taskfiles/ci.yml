@@ -1,0 +1,15 @@
+version: '3'
+
+tasks:
+  ci:
+    desc: CI fast path (build all + coverage gate)
+    cmds:
+      - task: doctor
+      - task: build:all
+      - task: coverage:gate
+
+  ci:full:
+    desc: CI full path (ci + package all)
+    cmds:
+      - task: ci
+      - task: package:all

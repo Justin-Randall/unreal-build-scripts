@@ -1,0 +1,18 @@
+version: '3'
+
+vars:
+  PLATFORM: '{{default "Win64" .PLATFORM}}'
+  COVERAGE_THRESHOLD: '{{default "100" .COVERAGE_THRESHOLD}}'
+  TEST_MAP: '{{default "" .TEST_MAP}}'
+
+tasks:
+  resolve:context:
+    internal: true
+    cmds:
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Resolve-TaskContext.ps1"
+
+  doctor:
+    desc: Validate UE path, project discovery, and required tools
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action doctor
