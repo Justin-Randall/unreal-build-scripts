@@ -4,6 +4,7 @@ param(
   [string]$Config = 'Development',
   [string]$Platform = 'Win64',
   [string]$AdditionalArgs = '',
+  [string]$TestPrefix = '',
   [string]$CoverageThreshold = '100',
   [string]$OutSubfolder = 'Packaged'
 )
@@ -51,6 +52,18 @@ function Show-RelevantLogs {
   ""
 }
 
+function Resolve-TestPrefix {
+	if ($TestPrefix -eq '__FAST__') { return $env:TEST_PREFIX_FAST }
+	if ($TestPrefix -eq '__INTEGRATION__') { return $env:TEST_PREFIX_INTEGRATION }
+	if ($TestPrefix -like '__INTEGRATION__.*') {
+		$suffix = $TestPrefix.Substring('__INTEGRATION__'.Length)
+		return "$($env:TEST_PREFIX_INTEGRATION)$suffix"
+	}
+  if ($TestPrefix) { return $TestPrefix }
+  if ($env:TEST_PREFIX) { return $env:TEST_PREFIX }
+  throw 'TEST_PREFIX is not set. Run resolve first or pass -TestPrefix.'
+}
+
 switch ($Action) {
   'doctor' {
     if (-not (Test-Path -LiteralPath $env:UBT_DLL)) { throw "UnrealBuildTool.dll missing at $($env:UBT_DLL)" }
@@ -73,9 +86,11 @@ switch ($Action) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   }
   'test' {
-    $execCmd = "Automation RunTests $($env:TEST_PREFIX); Quit"
+    $resolvedTestPrefix = Resolve-TestPrefix
+    $execCmd = "Automation RunTests $resolvedTestPrefix; Quit"
     $args = @($env:PROJECT_PATH, "/Game/$($env:TEST_MAP_ROOT)/Maps/TestMap", '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
     "[info] Running tests without coverage"
+    "[info] Test prefix: $resolvedTestPrefix"
     "[debug] $($env:EDITOR_CMD) $args"
     $exitCode = Invoke-Process -FilePath $env:EDITOR_CMD -Arguments $args
     "[info] Unreal Automation Tests finished with exit code: $exitCode"
@@ -90,7 +105,8 @@ switch ($Action) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     Remove-Item -LiteralPath (Join-Path $outDir '*') -Recurse -Force -ErrorAction SilentlyContinue
     $cobertura = Join-Path $outDir 'coverage.xml'
-    $execCmd = "Automation RunTests $($env:TEST_PREFIX); Quit"
+    $resolvedTestPrefix = Resolve-TestPrefix
+    $execCmd = "Automation RunTests $resolvedTestPrefix; Quit"
     $testArgs = @($env:PROJECT_PATH, "/Game/$($env:TEST_MAP_ROOT)/Maps/TestMap", '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
     $occArgs = @(
       "--export_type=cobertura:$cobertura",
@@ -101,11 +117,14 @@ switch ($Action) {
       '--excluded_sources', 'UnrealEngine',
       '--excluded_sources', 'Intermediate',
       '--excluded_sources', (Join-Path $env:AUTOMATION_ROOT 'Plugins'),
+      '--excluded_sources', 'DeltaScaleIntegrationConnectSmokeTest.cpp',
+      '--excluded_sources', 'ConnectionServiceSmokeRunner.h',
       '--excluded_sources', '_E2E_',
       '--excluded_sources', 'TestHelpers',
       '--', $env:EDITOR_CMD, $testArgs
     ) -join ' '
     "[debug] $($env:EDITOR_CMD) $testArgs"
+    "[info] Test prefix: $resolvedTestPrefix"
     "[info] Running $($coverageCmd.Path) $occArgs"
     $testExecutionTime = Measure-Command {
       $exitCode = Invoke-Process -FilePath $coverageCmd.Path -Arguments $occArgs

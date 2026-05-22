@@ -9,7 +9,8 @@ tasks:
       - task: coverage:gate
 
   ci:full:
-    desc: CI full path (ci + package all)
+    desc: CI full path (ci + integration tests + package all)
     cmds:
       - task: ci
+      - task: test:integration
       - task: package:all

@@ -46,6 +46,7 @@ $automationRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 $testMapRoot = $projectName
 $pluginMatch = [regex]::Match($startDir, '[\\/]Plugins[\\/]([^\\/]+)')
 if ($pluginMatch.Success) { $testPrefix = "$($pluginMatch.Groups[1].Value).Fast"; $testMapRoot = $pluginMatch.Groups[1].Value } else { $testPrefix = "$projectName.Fast" }
+$integrationPrefix = $testPrefix -replace '\.Fast$', '.Integration'
 
 if ($env:UE_DIR) { $uePath = $env:UE_DIR; $ueSource = 'UE_DIR task/env override' }
 elseif ($env:UE_PATH) { $uePath = $env:UE_PATH; $ueSource = 'process UE_PATH' }
@@ -61,6 +62,8 @@ $ctxPath = Join-Path $PSScriptRoot '..\.task-context.env'
   PROJECT_NAME = $projectName
   AUTOMATION_ROOT = $automationRoot
   TEST_PREFIX = $testPrefix
+  TEST_PREFIX_FAST = $testPrefix
+  TEST_PREFIX_INTEGRATION = $integrationPrefix
   TEST_MAP_ROOT = $testMapRoot
   UE_PATH_RESOLVED = $uePath
   UE_PATH_SOURCE = $ueSource

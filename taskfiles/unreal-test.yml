@@ -5,24 +5,61 @@ tasks:
     desc: Run Unreal automation tests
     vars:
       ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+      TEST_PREFIX: '{{default "" .TEST_PREFIX}}'
     cmds:
       - task: resolve:context
-      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action test -AdditionalArgs "{{.ADDITIONAL_ARGS}}"
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action test -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -TestPrefix "{{.TEST_PREFIX}}"
+
+  test:fast:
+    desc: Run Unreal fast automation tests (<project>.Fast)
+    vars:
+      ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action test -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -TestPrefix "__FAST__"
+
+  test:integration:
+    desc: Run Unreal integration automation tests (<project>.Integration)
+    vars:
+      ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action test -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -TestPrefix "__INTEGRATION__"
+
+  test:integration:one:
+    desc: Run one Unreal integration test (TEST=Name)
+    vars:
+      TEST: '{{default "" .TEST}}'
+      ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+    requires:
+      vars: [TEST]
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action test -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -TestPrefix "__INTEGRATION__.{{.TEST}}"
 
   coverage:
     desc: Run tests with OpenCppCoverage and generate Cobertura report
     vars:
       ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+      TEST_PREFIX: '{{default "" .TEST_PREFIX}}'
     cmds:
       - task: resolve:context
-      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage -AdditionalArgs "{{.ADDITIONAL_ARGS}}"
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -TestPrefix "{{.TEST_PREFIX}}"
+
+  coverage:fast:
+    desc: Run coverage for fast automation tests only (<project>.Fast)
+    vars:
+      ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -TestPrefix "__FAST__"
 
   coverage:gate:
     desc: Enforce coverage threshold (COVERAGE_THRESHOLD=100)
     vars:
       COVERAGE_THRESHOLD: '{{default "100" .COVERAGE_THRESHOLD}}'
     deps:
-      - task: coverage
+      - task: coverage:fast
     cmds:
       - task: resolve:context
       - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage-gate -CoverageThreshold {{.COVERAGE_THRESHOLD}}
