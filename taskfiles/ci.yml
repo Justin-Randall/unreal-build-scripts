@@ -13,5 +13,5 @@ tasks:
     cmds:
       - task: ci
       - task: cook:validate
-      - task: :integration:smoke
+      - task: test:integration
       - task: package:all

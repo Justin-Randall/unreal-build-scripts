@@ -42,6 +42,7 @@ if (-not $uproject) { throw "Cannot find a .uproject from '$startDir' up to file
 $projectPath = $uproject.FullName
 $projectDir = $uproject.DirectoryName
 $projectName = $uproject.BaseName
+$projectContentDir = Join-Path $projectDir 'Content'
 $automationRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 $testMapRoot = $projectName
 $pluginMatch = [regex]::Match($startDir, '[\\/]Plugins[\\/]([^\\/]+)')
@@ -55,7 +56,19 @@ if ($envMap.ContainsKey('TEST_MAP_ROOT') -and $envMap['TEST_MAP_ROOT']) {
 $testMapPath = if ($envMap.ContainsKey('TEST_MAP_PATH') -and $envMap['TEST_MAP_PATH']) {
   $envMap['TEST_MAP_PATH']
 } else {
-  "/Game/$testMapRoot/Maps/TestMap"
+  $defaultMapPath = "/Game/$testMapRoot/Maps/TestMap"
+  $defaultMapFile = Join-Path $projectContentDir (Join-Path $testMapRoot 'Maps\TestMap.umap')
+  if (Test-Path -LiteralPath $defaultMapFile) {
+    $defaultMapPath
+  } else {
+    $discoveredMap = Get-ChildItem -LiteralPath $projectContentDir -Filter 'TestMap.umap' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($discoveredMap) {
+      $relative = $discoveredMap.FullName.Substring($projectContentDir.Length).TrimStart('\\','/')
+      "/Game/$($relative.Substring(0, $relative.Length - '.umap'.Length) -replace '\\','/')"
+    } else {
+      $defaultMapPath
+    }
+  }
 }
 
 if ($env:UE_DIR) { $uePath = $env:UE_DIR; $ueSource = 'UE_DIR task/env override' }

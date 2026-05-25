@@ -126,8 +126,7 @@ switch ($Action) {
       '--excluded_sources', 'UnrealEngine',
       '--excluded_sources', 'Intermediate',
       '--excluded_sources', (Join-Path $env:AUTOMATION_ROOT 'Plugins'),
-      '--excluded_sources', 'DeltaScaleIntegrationConnectSmokeTest.cpp',
-      '--excluded_sources', 'ConnectionServiceSmokeRunner.h',
+      '--excluded_sources', 'Tests',
       '--excluded_sources', '_E2E_',
       '--excluded_sources', 'TestHelpers',
       '--', $env:EDITOR_CMD, $testArgs
