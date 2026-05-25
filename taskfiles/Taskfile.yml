@@ -10,6 +10,9 @@ includes:
   test:
     taskfile: ./unreal-test.yml
     flatten: true
+  cook:
+    taskfile: ./unreal-cook.yml
+    flatten: true
   package:
     taskfile: ./unreal-package.yml
     flatten: true

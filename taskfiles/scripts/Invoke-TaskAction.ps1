@@ -1,12 +1,13 @@
 param(
-  [Parameter(Mandatory = $true)] [ValidateSet('doctor','clean','build-editor','build-game','test','coverage','coverage-gate','package')]
+  [Parameter(Mandatory = $true)] [ValidateSet('doctor','clean','build-editor','build-game','test','coverage','coverage-gate','package','cook-validate')]
   [string]$Action,
   [string]$Config = 'Development',
   [string]$Platform = 'Win64',
   [string]$AdditionalArgs = '',
   [string]$TestPrefix = '',
   [string]$CoverageThreshold = '100',
-  [string]$OutSubfolder = 'Packaged'
+  [string]$OutSubfolder = 'Packaged',
+  [switch]$Iterative
 )
 
 $ErrorActionPreference = 'Stop'
@@ -240,6 +241,39 @@ switch ($Action) {
     if ($issues -and $issues.Count -gt 0) {
       $issues | ForEach-Object { "[package-issue] $_" }
       throw "Packaging produced warning/error log entries in $uatLogPath"
+    }
+  }
+  'cook-validate' {
+    $outDir = Join-Path $env:PROJECT_DIR "Intermediate\CookValidation\$Config"
+    New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+    $uatLogPath = Join-Path $outDir 'CookValidation.log'
+    if (Test-Path -LiteralPath $uatLogPath) { Remove-Item -LiteralPath $uatLogPath -Force }
+
+    $cookArgs = @(
+      'BuildCookRun',
+      "-project=$($env:PROJECT_PATH)",
+      '-noP4',
+      "-clientconfig=$Config",
+      "-targetplatform=$Platform",
+      '-cook',
+      '-allmaps',
+      '-unattended'
+    )
+    if ($Iterative) {
+      $cookArgs += '-iterate'
+    }
+
+    & $env:UAT_BAT $cookArgs 2>&1 | Tee-Object -FilePath $uatLogPath
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not (Test-Path -LiteralPath $uatLogPath)) { throw "Expected cook validation log not found: $uatLogPath" }
+
+    $issues = Get-Content -LiteralPath $uatLogPath | Where-Object {
+      ($_ -match '^\s*ERROR:') -or
+      (($_ -match '^\s*WARNING:') -and ($_ -notmatch 'Success\s*-\s*\d+\s*error\(s\),\s*\d+\s*warning\(s\)'))
+    }
+    if ($issues -and $issues.Count -gt 0) {
+      $issues | ForEach-Object { "[cook-issue] $_" }
+      throw "Cook validation produced warning/error log entries in $uatLogPath"
     }
   }
 }

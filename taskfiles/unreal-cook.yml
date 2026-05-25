@@ -1,0 +1,19 @@
+version: '3'
+
+tasks:
+  cook:validate:
+    desc: Run iterative cook validation (Development editor path)
+    vars:
+      PLATFORM: '{{default "Win64" .PLATFORM}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action cook-validate -Config Development -Platform {{.PLATFORM}} -Iterative
+
+  cook:validate:clean:
+    desc: Run clean non-iterative recook validation (Development editor path)
+    vars:
+      PLATFORM: '{{default "Win64" .PLATFORM}}'
+    cmds:
+      - task: resolve:context
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action clean
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action cook-validate -Config Development -Platform {{.PLATFORM}}
