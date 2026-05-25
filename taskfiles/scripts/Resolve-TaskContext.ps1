@@ -45,8 +45,18 @@ $projectName = $uproject.BaseName
 $automationRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 $testMapRoot = $projectName
 $pluginMatch = [regex]::Match($startDir, '[\\/]Plugins[\\/]([^\\/]+)')
-if ($pluginMatch.Success) { $testPrefix = "$($pluginMatch.Groups[1].Value).Fast"; $testMapRoot = $pluginMatch.Groups[1].Value } else { $testPrefix = "$projectName.Fast" }
+if ($pluginMatch.Success) { $testPrefix = "$($pluginMatch.Groups[1].Value).Fast" } else { $testPrefix = "$projectName.Fast" }
 $integrationPrefix = $testPrefix -replace '\.Fast$', '.Integration'
+
+if ($envMap.ContainsKey('TEST_MAP_ROOT') -and $envMap['TEST_MAP_ROOT']) {
+  $testMapRoot = $envMap['TEST_MAP_ROOT']
+}
+
+$testMapPath = if ($envMap.ContainsKey('TEST_MAP_PATH') -and $envMap['TEST_MAP_PATH']) {
+  $envMap['TEST_MAP_PATH']
+} else {
+  "/Game/$testMapRoot/Maps/TestMap"
+}
 
 if ($env:UE_DIR) { $uePath = $env:UE_DIR; $ueSource = 'UE_DIR task/env override' }
 elseif ($env:UE_PATH) { $uePath = $env:UE_PATH; $ueSource = 'process UE_PATH' }
@@ -65,6 +75,7 @@ $ctxPath = Join-Path $PSScriptRoot '..\.task-context.env'
   TEST_PREFIX_FAST = $testPrefix
   TEST_PREFIX_INTEGRATION = $integrationPrefix
   TEST_MAP_ROOT = $testMapRoot
+  TEST_MAP_PATH = $testMapPath
   UE_PATH_RESOLVED = $uePath
   UE_PATH_SOURCE = $ueSource
   UBT_DLL = (Join-Path $uePath 'Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.dll')

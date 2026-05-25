@@ -64,6 +64,12 @@ function Resolve-TestPrefix {
   throw 'TEST_PREFIX is not set. Run resolve first or pass -TestPrefix.'
 }
 
+function Resolve-TestMapPath {
+  if ($env:TEST_MAP_PATH) { return $env:TEST_MAP_PATH }
+  if ($env:TEST_MAP_ROOT) { return "/Game/$($env:TEST_MAP_ROOT)/Maps/TestMap" }
+  throw 'TEST_MAP_PATH and TEST_MAP_ROOT are not set. Run resolve first.'
+}
+
 switch ($Action) {
   'doctor' {
     if (-not (Test-Path -LiteralPath $env:UBT_DLL)) { throw "UnrealBuildTool.dll missing at $($env:UBT_DLL)" }
@@ -87,8 +93,9 @@ switch ($Action) {
   }
   'test' {
     $resolvedTestPrefix = Resolve-TestPrefix
+    $resolvedTestMapPath = Resolve-TestMapPath
     $execCmd = "Automation RunTests $resolvedTestPrefix; Quit"
-    $args = @($env:PROJECT_PATH, "/Game/$($env:TEST_MAP_ROOT)/Maps/TestMap", '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
+    $args = @($env:PROJECT_PATH, $resolvedTestMapPath, '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
     "[info] Running tests without coverage"
     "[info] Test prefix: $resolvedTestPrefix"
     "[debug] $($env:EDITOR_CMD) $args"
@@ -106,8 +113,9 @@ switch ($Action) {
     Remove-Item -LiteralPath (Join-Path $outDir '*') -Recurse -Force -ErrorAction SilentlyContinue
     $cobertura = Join-Path $outDir 'coverage.xml'
     $resolvedTestPrefix = Resolve-TestPrefix
+    $resolvedTestMapPath = Resolve-TestMapPath
     $execCmd = "Automation RunTests $resolvedTestPrefix; Quit"
-    $testArgs = @($env:PROJECT_PATH, "/Game/$($env:TEST_MAP_ROOT)/Maps/TestMap", '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
+    $testArgs = @($env:PROJECT_PATH, $resolvedTestMapPath, '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
     $occArgs = @(
       "--export_type=cobertura:$cobertura",
       "--export_type=html:$outDir",
