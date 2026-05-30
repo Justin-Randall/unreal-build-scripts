@@ -230,7 +230,25 @@ switch ($Action) {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     $uatLogPath = Join-Path $outDir 'BuildCookRun.log'
     if (Test-Path -LiteralPath $uatLogPath) { Remove-Item -LiteralPath $uatLogPath -Force }
-    & $env:UAT_BAT BuildCookRun "-project=$($env:PROJECT_PATH)" -noP4 -compile "-clientconfig=$Config" "-platform=$Platform" -cook -allmaps -stage -pak -archive "-archivedirectory=$outDir" 2>&1 | Tee-Object -FilePath $uatLogPath
+    $packageArgs = @(
+      'BuildCookRun',
+      "-project=$($env:PROJECT_PATH)",
+      '-noP4',
+      '-compile',
+      "-clientconfig=$Config",
+      "-platform=$Platform",
+      '-cook',
+      '-allmaps',
+      '-stage',
+      '-pak',
+      '-archive',
+      "-archivedirectory=$outDir"
+    )
+    if ($Iterative) {
+      $packageArgs += '-iterate'
+    }
+
+    & $env:UAT_BAT $packageArgs 2>&1 | Tee-Object -FilePath $uatLogPath
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     if (-not (Test-Path -LiteralPath $uatLogPath)) { throw "Expected package log not found: $uatLogPath" }
     $issues = Get-Content -LiteralPath $uatLogPath | Where-Object {

@@ -7,9 +7,10 @@ tasks:
       CONFIG: '{{default "Shipping" .CONFIG}}'
       PLATFORM: '{{default "Win64" .PLATFORM}}'
       OUT_SUBFOLDER: '{{default "Packaged" .OUT_SUBFOLDER}}'
+      ITERATIVE: '{{default "true" .ITERATIVE}}'
     cmds:
       - task: resolve:context
-      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action package -Config {{.CONFIG}} -Platform {{.PLATFORM}} -OutSubfolder {{.OUT_SUBFOLDER}}
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action package -Config {{.CONFIG}} -Platform {{.PLATFORM}} -OutSubfolder {{.OUT_SUBFOLDER}} {{if eq .ITERATIVE "true"}}-Iterative{{end}}
 
   package:all:
     desc: Package all game configurations
