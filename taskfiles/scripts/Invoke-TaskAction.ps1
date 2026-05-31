@@ -116,7 +116,7 @@ switch ($Action) {
     $resolvedTestPrefix = Resolve-TestPrefix
     $resolvedTestMapPath = Resolve-TestMapPath
     $execCmd = "Automation RunTests $resolvedTestPrefix; Quit"
-    $testArgs = @($env:PROJECT_PATH, $resolvedTestMapPath, '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
+    $testArgs = @($env:PROJECT_PATH, $resolvedTestMapPath, '-debug', '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
     $occArgs = @(
       "--export_type=cobertura:$cobertura",
       "--export_type=html:$outDir",
