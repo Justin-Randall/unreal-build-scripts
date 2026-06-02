@@ -138,15 +138,12 @@ switch ($Action) {
       $exitCode = Invoke-Process -FilePath $coverageCmd.Path -Arguments $occArgs
     }
     "[info] OpenCppCoverage finished with exit code: $exitCode"
-    Show-RelevantLogs
-    Show-TestLogSummary
     if ($exitCode -ne 0) {
+      Show-RelevantLogs
+      Show-TestLogSummary
       exit $exitCode
     }
 
-    ""
-    "[info] The test run took $($testExecutionTime.TotalSeconds) seconds (including engine initialization and setup)."
-    ""
     "[info] All tests passed."
 
     if (-not (Test-Path -LiteralPath $cobertura)) {
