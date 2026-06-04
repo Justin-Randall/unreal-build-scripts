@@ -245,8 +245,8 @@ switch ($Action) {
       $packageArgs += '-iterate'
     }
 
-    & $env:UAT_BAT $packageArgs 2>&1 | Tee-Object -FilePath $uatLogPath
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & $env:UAT_BAT $packageArgs 2>&1 | Tee-Object -FilePath $uatLogPath | Where-Object { $_ -match '^\s*(ERROR|WARNING:)' }
+    if ($LASTEXITCODE -ne 0) { Get-Content -LiteralPath $uatLogPath; exit $LASTEXITCODE }
     if (-not (Test-Path -LiteralPath $uatLogPath)) { throw "Expected package log not found: $uatLogPath" }
     $issues = Get-Content -LiteralPath $uatLogPath | Where-Object {
       ($_ -match '^\s*ERROR:') -or
@@ -277,8 +277,8 @@ switch ($Action) {
       $cookArgs += '-iterate'
     }
 
-    & $env:UAT_BAT $cookArgs 2>&1 | Tee-Object -FilePath $uatLogPath
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & $env:UAT_BAT $cookArgs 2>&1 | Tee-Object -FilePath $uatLogPath | Where-Object { $_ -match '^\s*(ERROR|WARNING:)' }
+    if ($LASTEXITCODE -ne 0) { Get-Content -LiteralPath $uatLogPath; exit $LASTEXITCODE }
     if (-not (Test-Path -LiteralPath $uatLogPath)) { throw "Expected cook validation log not found: $uatLogPath" }
 
     $issues = Get-Content -LiteralPath $uatLogPath | Where-Object {
