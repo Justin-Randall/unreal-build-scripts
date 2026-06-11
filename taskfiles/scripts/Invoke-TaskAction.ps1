@@ -17,6 +17,10 @@ Get-Content -LiteralPath $ctxPath | ForEach-Object {
   $parts = $_ -split '=', 2
   if ($parts.Length -eq 2) { [Environment]::SetEnvironmentVariable($parts[0], $parts[1], 'Process') }
 }
+# Unset so UBT resolves SDKs the same way every build.
+# Without this, a system-level UE_SDKS_ROOT is inherited inconsistently
+# by different terminal types, causing .rsp vs .rsp.old mismatch → spurious re-link.
+[Environment]::SetEnvironmentVariable('UE_SDKS_ROOT', $null, 'Process')
 
 function Invoke-Process {
   param(
