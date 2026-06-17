@@ -1,9 +1,10 @@
 param(
-  [Parameter(Mandatory = $true)] [ValidateSet('doctor','clean','build-editor','build-game','test','coverage','coverage-gate','package','cook-validate')]
+  [Parameter(Mandatory = $true)] [ValidateSet('doctor', 'clean', 'build-editor', 'build-game', 'test', 'coverage', 'coverage-gate', 'package', 'cook-validate')]
   [string]$Action,
   [string]$Config = 'Development',
   [string]$Platform = 'Win64',
   [string]$AdditionalArgs = '',
+  [string]$CoverageExcludedSources = '',
   [string]$TestPrefix = '',
   [string]$CoverageThreshold = '100',
   [string]$OutSubfolder = 'Packaged',
@@ -58,12 +59,12 @@ function Show-RelevantLogs {
 }
 
 function Resolve-TestPrefix {
-	if ($TestPrefix -eq '__FAST__') { return $env:TEST_PREFIX_FAST }
-	if ($TestPrefix -eq '__INTEGRATION__') { return $env:TEST_PREFIX_INTEGRATION }
-	if ($TestPrefix -like '__INTEGRATION__.*') {
-		$suffix = $TestPrefix.Substring('__INTEGRATION__'.Length)
-		return "$($env:TEST_PREFIX_INTEGRATION)$suffix"
-	}
+  if ($TestPrefix -eq '__FAST__') { return $env:TEST_PREFIX_FAST }
+  if ($TestPrefix -eq '__INTEGRATION__') { return $env:TEST_PREFIX_INTEGRATION }
+  if ($TestPrefix -like '__INTEGRATION__.*') {
+    $suffix = $TestPrefix.Substring('__INTEGRATION__'.Length)
+    return "$($env:TEST_PREFIX_INTEGRATION)$suffix"
+  }
   if ($TestPrefix) { return $TestPrefix }
   if ($env:TEST_PREFIX) { return $env:TEST_PREFIX }
   throw 'TEST_PREFIX is not set. Run resolve first or pass -TestPrefix.'
@@ -83,7 +84,7 @@ switch ($Action) {
     "Start dir: $($env:START_DIR)"; "Project:   $($env:PROJECT_PATH)"; "UE path:   $($env:UE_PATH_RESOLVED) ($($env:UE_PATH_SOURCE))"; "Prefix:    $($env:TEST_PREFIX)"
   }
   'clean' {
-    @('Intermediate\\Build','Binaries','Saved','Packaged') | ForEach-Object {
+    @('Intermediate\\Build', 'Binaries', 'Saved', 'Packaged') | ForEach-Object {
       $path = Join-Path $env:PROJECT_DIR $_
       if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force; "Removed: $path" } else { "Skipped (not found): $path" }
     }
@@ -121,7 +122,13 @@ switch ($Action) {
     $resolvedTestMapPath = Resolve-TestMapPath
     $execCmd = "Automation RunTests $resolvedTestPrefix; Quit"
     $testArgs = @($env:PROJECT_PATH, $resolvedTestMapPath, '-debug', '-nullrhi', "-ExecCmds=`"$execCmd`"", '-NoSplash', '-Unattended', '-NoCompile', '-NoLogTimes', '-Log=AutomatedTests.log', $AdditionalArgs) -join ' '
-    $occArgs = @(
+
+    $extraExcludedSources = @()
+    if (-not [string]::IsNullOrWhiteSpace($CoverageExcludedSources)) {
+      $extraExcludedSources = ($CoverageExcludedSources -split ';|,|\r?\n' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
+    $occArgsList = @(
       "--export_type=cobertura:$cobertura",
       "--export_type=html:$outDir",
       '--sources', (Join-Path $env:AUTOMATION_ROOT 'Source'),
@@ -132,9 +139,19 @@ switch ($Action) {
       '--excluded_sources', (Join-Path $env:AUTOMATION_ROOT 'Plugins'),
       '--excluded_sources', 'Tests',
       '--excluded_sources', '_E2E_',
-      '--excluded_sources', 'TestHelpers',
-      '--', $env:EDITOR_CMD, $testArgs
-    ) -join ' '
+      '--excluded_sources', 'TestHelpers'
+    )
+
+    foreach ($source in $extraExcludedSources) {
+      $occArgsList += @('--excluded_sources', $source)
+    }
+
+    if ($extraExcludedSources.Count -gt 0) {
+      "[info] Additional coverage excluded sources: $($extraExcludedSources -join ', ')"
+    }
+
+    $occArgsList += @('--', $env:EDITOR_CMD, $testArgs)
+    $occArgs = $occArgsList -join ' '
     "[debug] $($env:EDITOR_CMD) $testArgs"
     "[info] Test prefix: $resolvedTestPrefix"
     "[info] Running $($coverageCmd.Path) $occArgs"

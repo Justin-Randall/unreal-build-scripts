@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 tasks:
   test:
@@ -41,25 +41,30 @@ tasks:
     desc: Run tests with OpenCppCoverage and generate Cobertura report
     vars:
       ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+      COVERAGE_EXCLUDED_SOURCES: '{{default "" .COVERAGE_EXCLUDED_SOURCES}}'
       TEST_PREFIX: '{{default "" .TEST_PREFIX}}'
     cmds:
       - task: resolve:context
-      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -TestPrefix "{{.TEST_PREFIX}}"
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -CoverageExcludedSources "{{.COVERAGE_EXCLUDED_SOURCES}}" -TestPrefix "{{.TEST_PREFIX}}"
 
   coverage:fast:
     desc: Run coverage for fast automation tests only (<project>.Fast)
     vars:
       ADDITIONAL_ARGS: '{{default "" .ADDITIONAL_ARGS}}'
+      COVERAGE_EXCLUDED_SOURCES: '{{default "" .COVERAGE_EXCLUDED_SOURCES}}'
     cmds:
       - task: resolve:context
-      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -TestPrefix "__FAST__"
+      - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage -AdditionalArgs "{{.ADDITIONAL_ARGS}}" -CoverageExcludedSources "{{.COVERAGE_EXCLUDED_SOURCES}}" -TestPrefix "__FAST__"
 
   coverage:gate:
     desc: Enforce coverage threshold (COVERAGE_THRESHOLD=100)
     vars:
       COVERAGE_THRESHOLD: '{{default "100" .COVERAGE_THRESHOLD}}'
+      COVERAGE_EXCLUDED_SOURCES: '{{default "" .COVERAGE_EXCLUDED_SOURCES}}'
     deps:
       - task: coverage:fast
+        vars:
+          COVERAGE_EXCLUDED_SOURCES: "{{.COVERAGE_EXCLUDED_SOURCES}}"
     cmds:
       - task: resolve:context
       - pwsh -NoProfile -File "{{.TASKFILE_DIR}}/scripts/Invoke-TaskAction.ps1" -Action coverage-gate -CoverageThreshold {{.COVERAGE_THRESHOLD}}
